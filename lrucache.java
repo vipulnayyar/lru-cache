@@ -4,14 +4,14 @@ import java.io.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Scanner;
-
+import java.util.concurrent.locks.*;
 
 class Node
 {
-    protected String data;
-    protected Node next, prev;
+    public String data,key;
+    public Node next, prev;
+    public final Lock _mutex = new ReentrantLock(true);
  
-    /* Constructor */
     public Node()
     {
         next = null;
@@ -57,31 +57,28 @@ class Node
     }
 }
  
-/* Class linkedList */
 class linkedList
 {
     protected Node start;
     protected Node end ;
     public int size;
- 
-    /* Constructor */
     public linkedList()
     {
         start = null;
         end = null;
         size = 0;
     }
-    /* Function to check if list is empty */
+
     public boolean isEmpty()
     {
         return start == null;
     }
-    /* Function to get size of list */
+
     public int getSize()
     {
         return size;
     }
-    /* Function to insert element at begining */
+
     public void insertAtStart(String val)
     {
         Node nptr = new Node(val, null, null);        
@@ -98,38 +95,71 @@ class linkedList
         }
         size++;
     }
-    /* Function to insert element at end */
+
     public Node insertAtEnd(String val)
     {
         Node nptr = new Node(val, null, null);        
         if(start == null)
         {
+            nptr._mutex.lock();
             start = nptr;
             end = start;
+            nptr._mutex.unlock();
         }
         else
         {
+            end._mutex.lock();
             nptr.setLinkPrev(end);
             end.setLinkNext(nptr);
             end = nptr;
+            nptr.prev._mutex.unlock();
         }
         size++;
 
         return nptr;
     }
 
-    /* Function to delete node at position */
-    public void deleteAtPos(Node n)
+    public void deleteNode(Node n)
     {        
-                
+        n._mutex.lock();
+        if(n.prev == null && n.next == null){
+        
+            
+            lrucache.list.start = lrucache.list.end = null;
+            
+        
+        }else if(n.next == null){
+            
+            
+            n.prev._mutex.lock();    
+            n.prev.next=null;
+            n.prev._mutex.unlock();
+
+        }
+        else if(n.prev == null){
+
+            n.next._mutex.lock();
+            n.next.prev=null;
+            n.next._mutex.unlock();
+        }
+        else if(n.prev!=null && n.next!=null){
+            
+            n.prev._mutex.lock();
+            n.next._mutex.lock();
+
+            n.prev.next = n.next;
+            n.next.prev = n.prev;
+            
+            n.prev._mutex.unlock();
+            n.next._mutex.unlock();
+
+        }
+        n.next = n.prev = null;
+
+        n._mutex.unlock();
+        --size;
     }    
 }
-
-
-
-
-
-
 
 
 
@@ -155,11 +185,12 @@ class WorkerRunnable implements Runnable{
 		
 			Node temp = (Node)lrucache.cachemap.get(key);
 
-			if(temp == null){
+			if(temp == null){ // -ve cache lookup
 				
 				System.out.println("-ve");
 				temp = (Node)lrucache.list.insertAtEnd(key + "-data");
-				lrucache.cachemap.put(key,temp);
+				temp.key = key;
+                lrucache.cachemap.put(key,temp);
 
 				try{
 					Thread.sleep(500); // simulated data fetch latency period for negative cache lookup
@@ -167,14 +198,29 @@ class WorkerRunnable implements Runnable{
 				    e.printStackTrace();
 				}
 			
+            }else{ // +ve cache lookup
+
+                temp = (Node)lrucache.cachemap.get(key);
+                lrucache.list.deleteNode(temp);
+                String val = temp.getData();
+                temp = lrucache.list.insertAtEnd(val);
+                temp.key = key;
+                lrucache.cachemap.put(key,temp);
+            
             }
             
             String outp = (String)temp.getData();
 			System.out.println(outp);
-            output.write((key + " , " + outp).getBytes());
+            output.write((key + " , " + outp + "\n").getBytes());
             output.close();
             input.close();
 
+            if(lrucache.list.getSize() > 5){
+            
+                lrucache.cachemap.put(lrucache.list.start.key,null);
+                lrucache.list.deleteNode(lrucache.list.start);
+            
+            }
 
         } catch (IOException e) {
             e.printStackTrace();
