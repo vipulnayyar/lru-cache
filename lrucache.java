@@ -8,22 +8,24 @@ import java.util.concurrent.locks.*;
 
 class Node
 {
-    public String data,key;
+    public int data,key;
     public Node next, prev;
-    public final Lock _mutex = new ReentrantLock(true);
+    public final Lock _mutex;
  
     public Node()
     {
         next = null;
         prev = null;
-        data = "";
+        data = -1;
+        _mutex  = new ReentrantLock(true);
     }
     /* Constructor */
-    public Node(String d, Node n, Node p)
+    public Node(int d, Node n, Node p)
     {
         data = d;
         next = n;
         prev = p;
+        _mutex  = new ReentrantLock(true);   
     }
     /* Function to set link to next node */
     public void setLinkNext(Node n)
@@ -46,12 +48,12 @@ class Node
         return prev;
     }
     /* Function to set data to node */
-    public void setData(String d)
+    public void setData(int d)
     {
         data = d;
     }
     /* Function to get data from node */
-    public String getData()
+    public int getData()
     {
         return data;
     }
@@ -79,7 +81,7 @@ class linkedList
         return size;
     }
 
-    public void insertAtStart(String val)
+    public void insertAtStart(int val)
     {
         Node nptr = new Node(val, null, null);        
         if(start == null)
@@ -96,23 +98,23 @@ class linkedList
         size++;
     }
 
-    public Node insertAtEnd(String val)
+    public Node insertAtEnd(int val)
     {
         Node nptr = new Node(val, null, null);        
         if(start == null)
         {
-            nptr._mutex.lock();
+            //nptr._mutex.lock();
             start = nptr;
             end = start;
-            nptr._mutex.unlock();
+            //nptr._mutex.unlock();
         }
         else
         {
-            end._mutex.lock();
+            //end._mutex.lock();
             nptr.setLinkPrev(end);
             end.setLinkNext(nptr);
             end = nptr;
-            nptr.prev._mutex.unlock();
+            //nptr.prev._mutex.unlock();
         }
         size++;
 
@@ -180,14 +182,14 @@ class WorkerRunnable implements Runnable{
 			BufferedReader in = new BufferedReader(new InputStreamReader(input));
 
 			String key = convertStreamToString(input);	
-            String value = lrucache.get(key);	// Accessing corresponsing value from cache
+            int value = lrucache.get(Integer.parseInt(key));	// Accessing corresponsing value from cache
 			
 			System.out.println(value);
             output.write((key + " , " + value + "\n").getBytes());
             output.close();
             input.close();
 
-            if(lrucache.list.getSize() > 500){ // Evicting LRU data
+            if(lrucache.list.getSize() > 10000000){ // Evicting LRU data
             
                 lrucache.cachemap.put(lrucache.list.start.key,null);
                 lrucache.list.deleteNode(lrucache.list.start);
@@ -304,12 +306,10 @@ public class lrucache{
 
 	}
 
-    public static String get(String key){
+    public static int get(int key){
         Node temp = (Node)cachemap.get(key);
 
         if(temp == null){ // -ve cache lookup
-                
-            System.out.println("-ve lookup");
             
             try{
                 Thread.sleep(500); // simulated data fetch latency period for negative cache lookup
@@ -318,15 +318,15 @@ public class lrucache{
                 e.printStackTrace();
             }
             
-            put(key,key + "-data");          
+            put(key,key + 10);          
         
-            return (key + "-data");
+            return (key + 10);
 
         }else{ // +ve cache lookup
 
             //temp = (Node)lrucache.cachemap.get(key);
             list.deleteNode(temp);
-            String val = temp.getData();
+            int val = temp.getData();
             temp = lrucache.list.insertAtEnd(val);
             temp.key = key;
             lrucache.cachemap.put(key,temp);
@@ -338,10 +338,11 @@ public class lrucache{
 
     }
 
-    public static void put(String key, String val){
-        Node temp = (Node)list.insertAtEnd(key + "-data");
+    public static void put(int key, int val){
+        Node temp = (Node)list.insertAtEnd(key + 10);
         temp.key = key;
         cachemap.put(key,temp);
+        System.out.println("Inserted pair : (" + key + "," + val + ")");
     }
 
 
