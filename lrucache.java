@@ -1,10 +1,136 @@
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Scanner;
+
+
+class Node
+{
+    protected String data;
+    protected Node next, prev;
+ 
+    /* Constructor */
+    public Node()
+    {
+        next = null;
+        prev = null;
+        data = "";
+    }
+    /* Constructor */
+    public Node(String d, Node n, Node p)
+    {
+        data = d;
+        next = n;
+        prev = p;
+    }
+    /* Function to set link to next node */
+    public void setLinkNext(Node n)
+    {
+        next = n;
+    }
+    /* Function to set link to previous node */
+    public void setLinkPrev(Node p)
+    {
+        prev = p;
+    }    
+    /* Funtion to get link to next node */
+    public Node getLinkNext()
+    {
+        return next;
+    }
+    /* Function to get link to previous node */
+    public Node getLinkPrev()
+    {
+        return prev;
+    }
+    /* Function to set data to node */
+    public void setData(String d)
+    {
+        data = d;
+    }
+    /* Function to get data from node */
+    public String getData()
+    {
+        return data;
+    }
+}
+ 
+/* Class linkedList */
+class linkedList
+{
+    protected Node start;
+    protected Node end ;
+    public int size;
+ 
+    /* Constructor */
+    public linkedList()
+    {
+        start = null;
+        end = null;
+        size = 0;
+    }
+    /* Function to check if list is empty */
+    public boolean isEmpty()
+    {
+        return start == null;
+    }
+    /* Function to get size of list */
+    public int getSize()
+    {
+        return size;
+    }
+    /* Function to insert element at begining */
+    public void insertAtStart(String val)
+    {
+        Node nptr = new Node(val, null, null);        
+        if(start == null)
+        {
+            start = nptr;
+            end = start;
+        }
+        else
+        {
+            start.setLinkPrev(nptr);
+            nptr.setLinkNext(start);
+            start = nptr;
+        }
+        size++;
+    }
+    /* Function to insert element at end */
+    public Node insertAtEnd(String val)
+    {
+        Node nptr = new Node(val, null, null);        
+        if(start == null)
+        {
+            start = nptr;
+            end = start;
+        }
+        else
+        {
+            nptr.setLinkPrev(end);
+            end.setLinkNext(nptr);
+            end = nptr;
+        }
+        size++;
+
+        return nptr;
+    }
+
+    /* Function to delete node at position */
+    public void deleteAtPos(Node n)
+    {        
+                
+    }    
+}
+
+
+
+
+
+
+
 
 
 class WorkerRunnable implements Runnable{
@@ -21,15 +147,57 @@ class WorkerRunnable implements Runnable{
         try {
             InputStream input  = clientSocket.getInputStream();
             OutputStream output = clientSocket.getOutputStream();
-            output.write(("HTTP/1.1 200 OK\n\nWorkerRunnable").getBytes());
+			BufferedReader in = new BufferedReader(new InputStreamReader(input));
+
+			String key = convertStreamToString(input);
+			
+			//lrucache.cachemap.put("abc","data");
+		
+			Node temp = (Node)lrucache.cachemap.get(key);
+
+			if(temp == null){
+				
+				System.out.println("-ve");
+				temp = (Node)lrucache.list.insertAtEnd(key + "-data");
+				lrucache.cachemap.put(key,temp);
+
+				try{
+					Thread.sleep(500); // simulated data fetch latency period for negative cache lookup
+				}catch (InterruptedException e) {
+				    e.printStackTrace();
+				}
+			
+            }
+            
+            String outp = (String)temp.getData();
+			System.out.println(outp);
+            output.write((key + " , " + outp).getBytes());
             output.close();
             input.close();
-            //System.out.println("Request processed: " + time);
+
+
         } catch (IOException e) {
-            //report exception somewhere.
             e.printStackTrace();
         }
     }
+
+    static String convertStreamToString(java.io.InputStream input) {
+    	InputStream in = input;
+		InputStreamReader is = new InputStreamReader(in);
+		StringBuilder sb=new StringBuilder();
+		BufferedReader br = new BufferedReader(is);
+		
+		String read = new String();
+
+		try {
+                read = br.readLine();
+                sb.append(read);
+            } catch (IOException e) {
+		
+		}
+
+		return sb.toString();
+	}
 }
 
 
@@ -97,16 +265,17 @@ class MultiThreadedServer implements Runnable{
 public class lrucache{
 
 	public static ConcurrentHashMap cachemap;
+	public static linkedList list;
 
 	public static void main(String[] args) {
 		
-		cachemap = new ConcurrentHashMap();
-
 		MultiThreadedServer server = new MultiThreadedServer(9000);
+		cachemap = new ConcurrentHashMap();		
+		list = new linkedList();
 		new Thread(server).start();
 
 		try {
-		    Thread.sleep(20 * 1000);
+		    Thread.sleep(20 * 10000);
 		} catch (InterruptedException e) {
 		    e.printStackTrace();
 		}
