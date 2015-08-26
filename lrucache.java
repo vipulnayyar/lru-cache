@@ -1,3 +1,5 @@
+// GoZoomo (2015)
+// Author : Vipul Nayyar <vipul.nayyar@gozoomo.com>
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.io.*;
@@ -185,7 +187,7 @@ class WorkerRunnable implements Runnable{
             int value = lrucache.get(Integer.parseInt(key));	// Accessing corresponsing value from cache
 			
 			System.out.println(value);
-            output.write((key + " , " + value + "\n").getBytes());
+            output.write((key + " , " + value + "\n").getBytes()); // Sending cached value to client
             output.close();
             input.close();
 
@@ -334,8 +336,7 @@ public class lrucache{
             return val;
             
         }
-            
-
+        
     }
 
     public static void put(int key, int val){
@@ -347,3 +348,4 @@ public class lrucache{
 
 
 }
+
