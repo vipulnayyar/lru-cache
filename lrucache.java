@@ -161,8 +161,6 @@ class linkedList
     }    
 }
 
-
-
 class WorkerRunnable implements Runnable{
 
     protected Socket clientSocket = null;
@@ -175,47 +173,21 @@ class WorkerRunnable implements Runnable{
 
     public void run() {
         try {
+            System.out.println(lrucache.list.size);
+
             InputStream input  = clientSocket.getInputStream();
             OutputStream output = clientSocket.getOutputStream();
 			BufferedReader in = new BufferedReader(new InputStreamReader(input));
 
-			String key = convertStreamToString(input);
+			String key = convertStreamToString(input);	
+            String value = lrucache.get(key);	// Accessing corresponsing value from cache
 			
-			//lrucache.cachemap.put("abc","data");
-		
-			Node temp = (Node)lrucache.cachemap.get(key);
-
-			if(temp == null){ // -ve cache lookup
-				
-				System.out.println("-ve");
-				temp = (Node)lrucache.list.insertAtEnd(key + "-data");
-				temp.key = key;
-                lrucache.cachemap.put(key,temp);
-
-				try{
-					Thread.sleep(500); // simulated data fetch latency period for negative cache lookup
-				}catch (InterruptedException e) {
-				    e.printStackTrace();
-				}
-			
-            }else{ // +ve cache lookup
-
-                temp = (Node)lrucache.cachemap.get(key);
-                lrucache.list.deleteNode(temp);
-                String val = temp.getData();
-                temp = lrucache.list.insertAtEnd(val);
-                temp.key = key;
-                lrucache.cachemap.put(key,temp);
-            
-            }
-            
-            String outp = (String)temp.getData();
-			System.out.println(outp);
-            output.write((key + " , " + outp + "\n").getBytes());
+			System.out.println(value);
+            output.write((key + " , " + value + "\n").getBytes());
             output.close();
             input.close();
 
-            if(lrucache.list.getSize() > 5){
+            if(lrucache.list.getSize() > 500){ // Evicting LRU data
             
                 lrucache.cachemap.put(lrucache.list.start.key,null);
                 lrucache.list.deleteNode(lrucache.list.start);
@@ -223,7 +195,9 @@ class WorkerRunnable implements Runnable{
             }
 
         } catch (IOException e) {
+            System.out.println(lrucache.list.size);
             e.printStackTrace();
+            
         }
     }
 
@@ -329,4 +303,46 @@ public class lrucache{
 		server.stop();
 
 	}
+
+    public static String get(String key){
+        Node temp = (Node)cachemap.get(key);
+
+        if(temp == null){ // -ve cache lookup
+                
+            System.out.println("-ve lookup");
+            
+            try{
+                Thread.sleep(500); // simulated data fetch latency period for negative cache lookup
+            }catch (InterruptedException e) {
+                System.out.println(lrucache.list.size);
+                e.printStackTrace();
+            }
+            
+            put(key,key + "-data");          
+        
+            return (key + "-data");
+
+        }else{ // +ve cache lookup
+
+            //temp = (Node)lrucache.cachemap.get(key);
+            list.deleteNode(temp);
+            String val = temp.getData();
+            temp = lrucache.list.insertAtEnd(val);
+            temp.key = key;
+            lrucache.cachemap.put(key,temp);
+
+            return val;
+            
+        }
+            
+
+    }
+
+    public static void put(String key, String val){
+        Node temp = (Node)list.insertAtEnd(key + "-data");
+        temp.key = key;
+        cachemap.put(key,temp);
+    }
+
+
 }
